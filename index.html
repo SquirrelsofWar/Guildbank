@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TXT to CSV Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            text-align: center;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        input[type="file"] {
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .output {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>TXT to CSV Converter</h1>
+        <input type="file" id="fileInput" accept=".txt">
+        <br>
+        <button onclick="convertToCSV()">Convert to CSV</button>
+        <div class="output" id="output"></div>
+    </div>
+
+    <script>
+        function convertToCSV() {
+            const fileInput = document.getElementById('fileInput');
+            const outputDiv = document.getElementById('output');
+
+            if (!fileInput.files.length) {
+                alert('Please upload a .txt file!');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+                const txtContent = event.target.result;
+
+                // Process the text file to extract data into CSV format
+                const csvContent = processTextToCSV(txtContent);
+
+                // Create a downloadable CSV file
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const url = URL.createObjectURL(blob);
+                
+                // Create a download link
+                const downloadLink = document.createElement('a');
+                downloadLink.href = url;
+                downloadLink.download = 'converted_inventory.csv';
+                downloadLink.innerText = 'Download CSV';
+                downloadLink.style.display = 'block';
+                downloadLink.style.marginTop = '20px';
+                
+                // Clear previous output and show the download link
+                outputDiv.innerHTML = '';
+                outputDiv.appendChild(downloadLink);
+            };
+
+            reader.readAsText(file);
+        }
+
+        function processTextToCSV(txtContent) {
+            // Split lines by newlines
+            const lines = txtContent.split('\n');
+            let csvContent = 'Location,Name,ID,Count,Slots\n';
+
+            lines.forEach(line => {
+                const parts = line.split('\t');  // Assuming the data is tab-delimited
+
+                // If the line has valid content (5 columns), add it to CSV
+                if (parts.length >= 5) {
+                    const csvLine = parts.slice(0, 5).join(',') + '\n';
+                    csvContent += csvLine;
+                }
+            });
+
+            return csvContent;
+        }
+    </script>
+</body>
+</html>
