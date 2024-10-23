@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TXT to CSV Converter</title>
+    <title>TXT to CSV Converter with Banker Column</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -20,7 +20,17 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         input[type="file"] {
-            margin-bottom: 20px;
+            display: none;
+        }
+        #dropArea {
+            padding: 50px;
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 30px;
+        }
+        #dropArea.hover {
+            background-color: #f0f0f0;
         }
         button {
             padding: 10px 20px;
@@ -41,64 +51,106 @@
 </head>
 <body>
     <div class="container">
-        <h1>TXT to CSV Converter</h1>
+        <h1>TXT to CSV Converter with Banker</h1>
+
+        <!-- Drag and Drop Area -->
+        <div id="dropArea" onclick="document.getElementById('fileInput').click();">
+            <p>Drag and drop the inventory file here or click to browse</p>
+        </div>
+
+        <!-- Hidden File Input for browsing -->
         <input type="file" id="fileInput" accept=".txt">
-        <br>
+
+        <!-- Button to trigger the conversion -->
         <button onclick="convertToCSV()">Convert to CSV</button>
+
         <div class="output" id="output"></div>
     </div>
 
     <script>
-        function convertToCSV() {
-            const fileInput = document.getElementById('fileInput');
-            const outputDiv = document.getElementById('output');
+        const dropArea = document.getElementById('dropArea');
+        const fileInput = document.getElementById('fileInput');
+        let selectedFile = null;
 
-            if (!fileInput.files.length) {
-                alert('Please upload a .txt file!');
+        // Handle drag and drop events
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.classList.add('hover');
+        });
+
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.classList.remove('hover');
+        });
+
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropArea.classList.remove('hover');
+            selectedFile = e.dataTransfer.files[0];
+            handleFileSelect(selectedFile);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            selectedFile = e.target.files[0];
+            handleFileSelect(selectedFile);
+        });
+
+        function handleFileSelect(file) {
+            if (!file.name.match(/^[A-Z][a-z]+-Inventory\.txt$/)) {
+                alert('File name must be in the format Xxxx-Inventory.txt');
+                return;
+            }
+            dropArea.innerHTML = `<p>Selected file: ${file.name}</p>`;
+        }
+
+        function convertToCSV() {
+            if (!selectedFile) {
+                alert('Please upload a file!');
                 return;
             }
 
-            const file = fileInput.files[0];
             const reader = new FileReader();
+            const bankerName = selectedFile.name.split('-')[0];  // Extract the banker name
 
             reader.onload = function(event) {
                 const txtContent = event.target.result;
 
                 // Process the text file to extract data into CSV format
-                const csvContent = processTextToCSV(txtContent);
+                const csvContent = processTextToCSV(txtContent, bankerName);
 
                 // Create a downloadable CSV file
                 const blob = new Blob([csvContent], { type: 'text/csv' });
                 const url = URL.createObjectURL(blob);
-                
+
                 // Create a download link
                 const downloadLink = document.createElement('a');
                 downloadLink.href = url;
-                downloadLink.download = 'converted_inventory.csv';
+                downloadLink.download = `${bankerName}-inventory.csv`;  // Use banker name in file name
                 downloadLink.innerText = 'Download CSV';
                 downloadLink.style.display = 'block';
                 downloadLink.style.marginTop = '20px';
-                
+
                 // Clear previous output and show the download link
+                const outputDiv = document.getElementById('output');
                 outputDiv.innerHTML = '';
                 outputDiv.appendChild(downloadLink);
             };
 
-            reader.readAsText(file);
+            reader.readAsText(selectedFile);
         }
 
-        function processTextToCSV(txtContent) {
+        function processTextToCSV(txtContent, bankerName) {
             // Split lines by newlines
             const lines = txtContent.split('\n');
-            let csvContent = 'Location,Name,ID,Count,Slots\n';
+            let csvContent = 'Location,Name,ID,Count,Slots,Banker\n'; // Add "Banker" as a new column header
 
-            lines.forEach(line => {
+            lines.forEach((line, index) => {
                 const parts = line.split('\t');  // Assuming the data is tab-delimited
 
-                // If the line has valid content (5 columns), add it to CSV
-                if (parts.length >= 5) {
-                    const csvLine = parts.slice(0, 5).join(',') + '\n';
-                    csvContent += csvLine;
+                // Ensure valid rows and skip header row
+                if (parts.length >= 5 && parts[0].trim() !== "Location" && parts[0].trim() !== "") {
+                    // Remove any accidental newlines or spaces in fields and append
+                    const csvLine = `${parts[0].trim()},${parts[1].trim()},${parts[2].trim()},${parts[3].trim()},${parts[4].trim()},${bankerName.trim()}`;
+                    csvContent += csvLine + '\n';  // Append row and newline correctly
                 }
             });
 
